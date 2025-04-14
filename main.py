@@ -25,6 +25,17 @@ CYAN = (0, 255, 255)
 ORANGE = (255, 165, 0)
 MAGENTA = (255, 0, 255)
 
+# KEYBINDS
+# SPACE = Pause/Play
+# Up arrow = speed up
+# down arrow = slow down
+# Right Arrow = turn right
+# Left arrow = turn left
+# W = move forward
+# R = reset maze
+# Enter = save data
+# P = Print out Data from file
+
 # TRAP PROPTERTIES:
 # 0 = wall
 # 1 = path
@@ -37,7 +48,7 @@ MAGENTA = (255, 0, 255)
 class NeuralNetwork():
     def __init__(self):
         self.input_size = 4
-        self.hidden_size = 6
+        self.hidden_size = 10
         self.output_size = 3
 
         self.W1 = np.random.randn(self.input_size, self.hidden_size) * 0.1
@@ -71,7 +82,7 @@ class NeuralNetwork():
         probs = self.softmax(z2)
         return probs
     
-    def train(self, state, action, reward, next_state, done, learning_rate=0.01, gamma=0.99):
+    def train(self, state, action, reward, next_state, done, learning_rate=0.2, gamma=0.99):
         
         # Forward pass on current state
         z1 = np.dot(state, self.W1) + self.b1
@@ -111,6 +122,25 @@ class NeuralNetwork():
 
         loss = np.mean((q_values - target_q) ** 2)
         return loss
+    
+    def save_model(self, filename="best_scores.npz"):
+        np.savez(filename, W1=self.W1, W2=self.W2, b1=self.b1, b2=self.b2)
+    
+    def load_data(self, filename="best_scores.npz"):
+        data = np.load(filename)
+        newNeuralNetwork = NeuralNetwork()
+        newNeuralNetwork.W1 = data["W1"]
+        newNeuralNetwork.W2 = data["W2"]
+        newNeuralNetwork.b1 = data["b1"]
+        newNeuralNetwork.b2 = data["b2"]
+        return newNeuralNetwork
+    
+    def print(self):
+        print(f'W1: {self.W1}')
+        print(f'W2: {self.W2}')
+        print(f'b1: {self.b1}')
+        print(f'b2: {self.b2}')
+
 
 
 class Maze:
@@ -301,14 +331,20 @@ class Minion:
 
         
         if (self.x, self.y) not in self.visited:
-            reward += 0.5  # Encourage exploring
+            reward += 1 # Encourage exploring
             self.visited.add((self.x, self.y))
 
 
         return reward
 
     def done(self, maze):
+        if maze.maze[self.y][self.x] == 3:
+            maze.generateNewMaze()
+            self.visited = set()
+            self.x = 1
+            self.y = 1
         return maze.maze[self.y][self.x] == 3
+        
 
 
 # Set up the display
@@ -316,7 +352,7 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Traps AI")
 
 
-maze_size = 21
+maze_size = 9
 CELL_SIZE = 550 // maze_size
 print("CELL_SIZE: ", CELL_SIZE)
 
@@ -332,32 +368,63 @@ neuralNetwork = NeuralNetwork()
 
 # main loop
 def main():
+
+    autoSaveTickTimer = 0
+
+    minionTickDelayOptions = [60, 30, 15, 5, 0]
+    minionTickDelayIndex = 0
+    minionTickDelayPaused = False
+
     minion_tick_delay = 0
     clock = pygame.time.Clock()
     running = True
-    memory = deque(maxlen=750)
+    memory = deque(maxlen=10000)
 
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:
-                    maze.generateNewMaze()
+            # if event.type == pygame.MOUSEBUTTONDOWN:
+            #     if event.button == 1:
+            #         maze.generateNewMaze()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
                     minion.rotate("left")
                 if event.key == pygame.K_RIGHT:
                     minion.rotate("right")
-                if event.key == pygame.K_UP:
+                if event.key == pygame.K_w:
                     # dx, dy = minion.getDirection()
                     # if maze.maze[minion.y + dy][minion.x + dx] != 0:
                     # minion.move(dx, dy)
                     minion.move_forward()
-        screen.fill(WHITE)
+                if event.key == pygame.K_UP:
+                    minionTickDelayIndex += 1
+                    if minionTickDelayIndex > len(minionTickDelayOptions) - 1:
+                        minionTickDelayIndex = 0
+                if event.key == pygame.K_DOWN:
+                    minionTickDelayIndex -= 1
+                    if minionTickDelayIndex < 1:
+                        minionTickDelayIndex = len(minionTickDelayOptions) - 1
+                if event.key == pygame.K_SPACE:
+                    minionTickDelayPaused = not minionTickDelayPaused
+                if event.key == pygame.K_r:
+                    maze.generateNewMaze()
+                    minion.x = 1
+                    minion.y = 1
+                    minion.visited = set()
+                if event.key == pygame.K_RETURN:
+                    neuralNetwork.save_model()
+                if event.key == pygame.K_p:
+                    newNeuralNetwork = neuralNetwork.load_data()
+                    newNeuralNetwork.print()
+                
+        autoSaveTickTimer += 1
+        if autoSaveTickTimer >= 36000:
+            autoSaveTickTimer = 0
+            neuralNetwork.save_model()
 
         minion_tick_delay += 1
-        if minion_tick_delay >= 0:
+        if minion_tick_delay >= minionTickDelayOptions[minionTickDelayIndex] and not minionTickDelayPaused:
             minion_tick_delay = 0
 
             state = minion.state(maze)
@@ -369,11 +436,17 @@ def main():
 
             data = (state, action, reward, next_state, done)
             memory.append(data)
-            for experience in random.sample(memory, len(memory)):
+            if len(memory) < 64:
+                sample = len(memory)
+            else:
+                sample = 64
+            for experience in random.sample(memory, sample):
                 state, action, reward, next_state, done = experience
                 neuralNetwork.train(state, action, reward, next_state, done)
             
             minion.lastAction = action
+
+        screen.fill(WHITE)
 
         maze.draw(screen)
         minion.draw(screen)
