@@ -3,16 +3,13 @@ import random
 import numpy as np
 from collections import deque
 
-# TODO MAKE IT LEARN SLOWLY
-# TODO MAKE IT SAVE DATA
-
 # Initialize Pygame
 pygame.init()
 pygame.font.init()
 
 # Constants
 WIDTH, HEIGHT = 750,750
-FPS = 60
+FPS = 120
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -158,7 +155,6 @@ class NeuralNetwork():
         print(f'b3: {self.b3}')
 
 
-
 class Maze:
     def __init__(self, size, cell_size):
         self.rows = size
@@ -230,6 +226,7 @@ class Maze:
                 pygame.draw.rect(screen, color, (col * self.cell_size + self.offset[0], row * self.cell_size + self.offset[1], self.cell_size, self.cell_size))
                 if inner_color != None:
                     pygame.draw.rect(screen, inner_color, (col * self.cell_size + self.offset[0] + self.cell_size / 4, row * self.cell_size + self.offset[1] + self.cell_size / 4, self.cell_size / 2, self.cell_size / 2))
+
 
 class Minion:
     def __init__(self, x: int, y: int, color: list):
@@ -331,16 +328,16 @@ class Minion:
         else:
             match maze.maze[self.y][self.x]:
                 case 0: # WALL
-                    reward = -10
+                    reward = -100
                     if self.minionBarrierToggle:
                         self.x = 1
                         self.y = 1
                         print("Minion hit wall") 
 
                 case 1: # PATH
-                    reward = 0.01
+                    reward = 1
                     if self.minionBarrierToggle:
-                        reward = 0.1
+                        reward = 2.5
                 case 2: # START
                     reward = 0
                 case 3: # END/GOAL
@@ -361,7 +358,8 @@ class Minion:
             self.spin_streak = 0
 
         if self.spin_streak > 2:
-            reward -= self.spin_streak  # the longer it spins, the worse it gets
+            print(self.spin_streak)
+            reward -= self.spin_streak * 10 # the longer it spins, the worse it gets
 
 
         
