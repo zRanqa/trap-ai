@@ -9,7 +9,7 @@ pygame.font.init()
 
 # Constants
 WIDTH, HEIGHT = 750,750
-FPS = 120
+FPS = 240
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -332,12 +332,14 @@ class Minion:
                     if self.minionBarrierToggle:
                         self.x = 1
                         self.y = 1
-                        print("Minion hit wall") 
 
                 case 1: # PATH
-                    reward = 1
-                    if self.minionBarrierToggle:
-                        reward = 2.5
+                    if self.lastActionWasRotation:
+                        reward = -0.1
+                    else:
+                        reward = 1
+                        if self.minionBarrierToggle:
+                            reward = 10
                 case 2: # START
                     reward = 0
                 case 3: # END/GOAL
@@ -350,7 +352,6 @@ class Minion:
 
         if action > 0 and self.blockInFront == 0 and self.checkBlockInFront(maze) == 1:
             reward += 1
-            print("turned away from wall into path")
 
         if action in [1, 2]:  # Rotate left/right
             self.spin_streak += 1
@@ -358,7 +359,6 @@ class Minion:
             self.spin_streak = 0
 
         if self.spin_streak > 2:
-            print(self.spin_streak)
             reward -= self.spin_streak * 10 # the longer it spins, the worse it gets
 
 
@@ -404,7 +404,7 @@ def main():
 
     autoSaveTickTimer = 0
 
-    minionTickDelayOptions = [60, 30, 15, 5, 1]
+    minionTickDelayOptions = [240, 120, 60, 30, 15, 5, 1]
     minionTickDelayIndex = 0
     minionTickDelayPaused = False
 
@@ -464,7 +464,7 @@ def main():
                 if event.key == pygame.K_t:
                     trainAllToggle = not trainAllToggle
                     if trainAllToggle:
-                        string = 750
+                        string = 1000
                     else:
                         string = 64
                     print(f"Minion training amount set to: {string}")
@@ -500,7 +500,7 @@ def main():
             sample = 0
 
             if trainAllToggle:
-                sample_max = 750
+                sample_max = 1000
             else:
                 sample_max = 64
 
