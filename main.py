@@ -235,9 +235,11 @@ class Minion:
         self.rotation = 0
         self.visited = set()
         self.spin_streak = 0
+        self.lastLocationVisited = [x,y]
         self.lastActionWasRotation = False
         self.color = color
         self.minionBarrierToggle = False
+
 
     def getDirection(self):
         match self.rotation:
@@ -307,6 +309,7 @@ class Minion:
 
         match action:
             case 0:
+                self.lastLocationVisited = [self.x, self.y]
                 self.lastActionWasRotation = False
                 self.move_forward()
             case 1:
@@ -328,11 +331,11 @@ class Minion:
         else:
             match maze.maze[self.y][self.x]:
                 case 0: # WALL
+                    print("minion hit wall")
                     reward = -100
                     if self.minionBarrierToggle:
-                        self.x = 1
-                        self.y = 1
-                        print("Minion hit wall") 
+                        self.x = self.lastLocationVisited[0]
+                        self.y = self.lastLocationVisited[1]
 
                 case 1: # PATH
                     reward = 1
@@ -341,6 +344,7 @@ class Minion:
                 case 2: # START
                     reward = 0
                 case 3: # END/GOAL
+                    print("Minion Solved Maze!")
                     reward = 100
                 case 4: # TRAP/PURPLE SPACE
                     reward = 25
@@ -350,7 +354,6 @@ class Minion:
 
         if action > 0 and self.blockInFront == 0 and self.checkBlockInFront(maze) == 1:
             reward += 1
-            print("turned away from wall into path")
 
         if action in [1, 2]:  # Rotate left/right
             self.spin_streak += 1
@@ -358,7 +361,6 @@ class Minion:
             self.spin_streak = 0
 
         if self.spin_streak > 2:
-            print(self.spin_streak)
             reward -= self.spin_streak * 10 # the longer it spins, the worse it gets
 
 
@@ -366,7 +368,7 @@ class Minion:
         if (self.x, self.y) not in self.visited:
             if maze.maze[self.y][self.x] == 1:
                 print("BONUS REWARD GIVEN FOR EXPLORATION")
-                reward += 1 # Encourage exploring
+                reward += 5 # Encourage exploring
                 self.visited.add((self.x, self.y))
 
 
@@ -387,7 +389,7 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Traps AI")
 
 
-maze_size = 9
+maze_size = 7
 CELL_SIZE = 550 // maze_size
 print("CELL_SIZE: ", CELL_SIZE)
 
