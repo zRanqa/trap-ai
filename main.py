@@ -383,7 +383,9 @@ class Minion:
             self.visited = set()
             self.x = 1
             self.y = 1
-        return maze.maze[self.y][self.x] == 3
+            return True
+        else:
+            return False
         
 
 
@@ -408,6 +410,8 @@ def main():
     trainAllToggle = False
 
     autoSaveTickTimer = 0
+
+    totalTimesMazeSolved = 0
 
     minionTickDelayOptions = [240, 120, 60, 30, 15, 5, 1]
     minionTickDelayIndex = 0
@@ -504,6 +508,9 @@ def main():
             memory.append(data)
             sample = 0
 
+            if done:
+                totalTimesMazeSolved += 1
+
             if trainAllToggle:
                 sample_max = 1000
             else:
@@ -531,13 +538,10 @@ def main():
 
     pygame.quit()
 
-    return memory
+    return totalTimesMazeSolved
 
 
 if __name__ == "__main__":
-    memory = main()
+    totalTimesMazeSolved = main()
 
-count = 1
-for i in memory:
-    print(f'{count}. {i}')
-    count += 1
+print(f"Total times maze SOLVED: {totalTimesMazeSolved}")
